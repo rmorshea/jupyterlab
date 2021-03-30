@@ -42,7 +42,6 @@
     "watch": "tsc -b --watch"
   },
   "dependencies": {
-<<<<<<< HEAD
     "@jupyterlab/apputils": "^3.1.0-alpha.4",
     "@jupyterlab/cells": "^3.1.0-alpha.4",
     "@jupyterlab/codeeditor": "^3.1.0-alpha.4",
