@@ -15,6 +15,8 @@ import { IChangedArgs } from '@jupyterlab/coreutils';
 
 import * as nbformat from '@jupyterlab/nbformat';
 
+import * as nbmodel from '@jupyterlab/nbmodel';
+
 import { UUID } from '@lumino/coreutils';
 
 import {
@@ -172,6 +174,7 @@ export class CellModel extends CodeEditor.Model implements ICellModel {
     cellType.set(this.type);
 
     const observableMetadata = this.modelDB.createMap('metadata');
+    observableMetadata.changed.connect(this.onModelDBMetadataChange, this);
     observableMetadata.changed.connect(this.onGenericChange, this);
 
     const cell = options.cell;
@@ -285,11 +288,125 @@ export class CellModel extends CodeEditor.Model implements ICellModel {
   }
 
   /**
+   * Handle a change to the cell metadata modelDB and reflect it in the shared model.
+   */
+  protected onModelDBMetadataChange(
+    sender: IObservableJSON,
+    event: IObservableJSON.IChangedArgs
+  ): void {
+    const metadata = this.nbcell.getMetadata();
+    this._modeDBMutex(() => {
+      switch (event.type) {
+        case 'add':
+          this._changeCellMetata(metadata, event);
+          break;
+        case 'change':
+          this._changeCellMetata(metadata, event);
+          break;
+        case 'remove':
+          delete metadata[event.key];
+          break;
+        default:
+          throw new Error(`Invalid event type: ${event.type}`);
+      }
+      this.nbcell.setMetadata(metadata);
+    });
+  }
+
+  private _changeCellMetata(
+    metadata: Partial<nbmodel.ISharedBaseCellMetada>,
+    event: IObservableJSON.IChangedArgs
+  ) {
+    switch (event.key) {
+      case 'jupyter':
+        //        if (event.newValue?['outputs_hidden']) {
+        metadata.jupyter = event.newValue as any;
+        break;
+      case 'collapsed':
+        metadata.collapsed = event.newValue as any;
+        break;
+      case 'name':
+        metadata.name = event.newValue as any;
+        break;
+      case 'scrolled':
+        metadata.scrolled = event.newValue as any;
+        break;
+      case 'tags':
+        metadata.tags = event.newValue as any;
+        break;
+      case 'trusted':
+        metadata.trusted = event.newValue as any;
+        break;
+      default:
+        // The default is applied for custom metadata that are not
+        // defined in the official nbformat but which are defined
+        // by the user.
+        metadata[event.key] = event.newValue as any;
+    }
+  }
+
+  /**
+   * Handle a change to the cell shared model and reflect it in modelDB.
+   * We update the modeldb metadata when the nbcell changes.
+   *
+   * This method overrides the CodeEditor protected _onSharedModelChanged
+   * so we first call super._onSharedModelChanged
+   *
+   * @override CodeEditor._onSharedModelChanged
+   */
+  protected _onSharedModelChanged(
+    sender: nbmodel.ISharedCodeCell,
+    change: nbmodel.CellChange<nbmodel.ISharedBaseCellMetada>
+  ): void {
+    super._onSharedModelChanged(sender, change);
+    this._mutex(() => {
+      if (change.metadataChange) {
+        const newValue = change.metadataChange
+          ?.newValue as nbmodel.ISharedBaseCellMetada;
+        if (newValue) {
+          Object.keys(newValue).map(key => {
+            switch (key) {
+              case 'collapsed':
+                this.metadata.set('collapsed', newValue.jupyter);
+                break;
+              case 'jupyter':
+                this.metadata.set('jupyter', newValue.jupyter);
+                break;
+              case 'name':
+                this.metadata.set('name', newValue.name);
+                break;
+              case 'scrolled':
+                this.metadata.set('scrolled', newValue.scrolled);
+                break;
+              case 'tags':
+                this.metadata.set('tags', newValue.tags);
+                break;
+              case 'trusted':
+                this.metadata.set('trusted', newValue.trusted);
+                break;
+              default:
+                // The default is applied for custom metadata that are not
+                // defined in the official nbformat but which are defined
+                // by the user.
+                this.metadata.set(key, newValue[key]);
+            }
+          });
+        }
+      }
+    });
+  }
+
+  /**
    * Handle a change to the observable value.
    */
   protected onGenericChange(): void {
     this.contentChanged.emit(void 0);
   }
+
+  /**
+   * A mutex to update the nbcell model.
+   */
+  private readonly _modeDBMutex = nbmodel.createMutex();
 }
 
 /**

@@ -24,6 +24,9 @@
       "path": "../nbformat"
     },
     {
+      "path": "../nbmodel"
+    },
+    {
       "path": "../observables"
     },
     {
@@ -64,6 +67,9 @@
     },
     {
       "path": "../nbformat"
+    },
+    {
+      "path": "../nbmodel"
     },
     {
       "path": "../observables"

@@ -5,13 +5,13 @@
 
 import { ISignal, Signal } from '@lumino/signaling';
 
+import * as Y from 'yjs';
+
 import * as nbformat from '@jupyterlab/nbformat';
 
 import * as nbmodel from './api';
 
-import { Delta } from './utils';
-
-import * as Y from 'yjs';
+import { Delta } from './api';
 
 // @ts-ignore
 import { Awareness } from 'y-protocols/dist/awareness.cjs';
@@ -175,7 +175,7 @@ export class YNotebook implements nbmodel.ISharedNotebook {
   private _changed = new Signal<this, nbmodel.NotebookChange>(this);
 }
 
-export class YBaseCell<Metadata extends nbformat.IBaseCellMetadata>
+export class YBaseCell<Metadata extends nbmodel.ISharedBaseCellMetada>
   implements nbmodel.ISharedBaseCell<Metadata> {
   constructor(ymodel: Y.Map<any>) {
     this.ymodel = ymodel;
@@ -234,7 +234,7 @@ export class YBaseCell<Metadata extends nbformat.IBaseCellMetadata>
     if (modelEvent && modelEvent.keysChanged.has('metadata')) {
       const change = modelEvent.changes.keys.get('metadata');
       changes.metadataChange = {
-        oldValue: change!.oldValue,
+        oldValue: change?.oldValue ? change!.oldValue : undefined,
         newValue: this.getMetadata()
       };
     }
@@ -312,7 +312,7 @@ export class YBaseCell<Metadata extends nbformat.IBaseCellMetadata>
 }
 
 export class YCodeCell
-  extends YBaseCell<nbformat.ICodeCellMetadata>
+  extends YBaseCell<nbmodel.ISharedBaseCellMetada>
   implements nbmodel.ISharedCodeCell {
   get cell_type(): 'code' {
     return 'code';
@@ -362,7 +362,7 @@ export class YCodeCell
 }
 
 export class YRawCell
-  extends YBaseCell<nbformat.IRawCellMetadata>
+  extends YBaseCell<nbmodel.ISharedBaseCellMetada>
   implements nbmodel.ISharedRawCell {
   get cell_type(): 'raw' {
     return 'raw';
@@ -378,7 +378,7 @@ export class YRawCell
 }
 
 export class YMarkdownCell
-  extends YBaseCell<nbformat.IRawCellMetadata>
+  extends YBaseCell<nbmodel.ISharedBaseCellMetada>
   implements nbmodel.ISharedMarkdownCell {
   get cell_type(): 'markdown' {
     return 'markdown';

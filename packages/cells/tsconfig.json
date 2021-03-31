@@ -28,6 +28,9 @@
       "path": "../nbformat"
     },
     {
+      "path": "../nbmodel"
+    },
+    {
       "path": "../observables"
     },
     {
