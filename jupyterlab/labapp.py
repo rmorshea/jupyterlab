@@ -30,7 +30,8 @@ from .debuglog import DebugLogFileMixin
 from .handlers.build_handler import Builder, BuildHandler, build_path
 from .handlers.error_handler import ErrorHandler
 from .handlers.extension_manager_handler import ExtensionHandler, ExtensionManager, extensions_handler_path
-from .handlers.yjs_echo_ws import YJSEchoWS
+# @TODO: add yjs_echo_ws server
+# from .handlers.yjs_echo_ws import YJSEchoWS
 
 DEV_NOTE = """You're running JupyterLab from source.
 If you're working on the TypeScript sources of JupyterLab, try running
