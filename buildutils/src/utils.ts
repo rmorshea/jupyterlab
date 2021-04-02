@@ -46,7 +46,8 @@ export function getLernaPaths(basePath = '.'): string[] {
  */
 export function getCorePaths(): string[] {
   const spec = path.resolve(path.join('.', 'packages', '*'));
-  return glob.sync(spec);
+  // @todo remove this filter once nbmodel and docprovider were added
+  return glob.sync(spec).filter(x => !x.endsWith('/nbmodel') && !x.endsWith('/docprovider'));
 }
 
 /**
