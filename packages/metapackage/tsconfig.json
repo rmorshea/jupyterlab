@@ -73,9 +73,6 @@
       "path": "../docmanager-extension"
     },
     {
-      "path": "../docprovider"
-    },
-    {
       "path": "../docregistry"
     },
     {
@@ -164,9 +161,6 @@
     },
     {
       "path": "../nbformat"
-    },
-    {
-      "path": "../nbmodel"
     },
     {
       "path": "../notebook"
