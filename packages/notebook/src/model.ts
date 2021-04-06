@@ -335,7 +335,6 @@ close the notebook without saving it.`,
   initialize(): void {
     super.initialize();
     if (!this.cells.length) {
-      // @todo re-introduce fix of initial content
       const factory = this.contentFactory;
       this.cells.push(factory.createCodeCell({}));
     }
@@ -420,6 +419,9 @@ export namespace NotebookModel {
      */
     translator?: ITranslator;
 
+    /**
+     * If the model is initialized or not.
+     */
     isInitialized?: boolean;
   }
 

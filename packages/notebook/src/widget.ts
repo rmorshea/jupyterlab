@@ -387,7 +387,6 @@ export class StaticNotebook extends Widget {
     this._updateMimetype();
     const cells = newValue.cells;
     if (!cells.length && newValue.isInitialized) {
-      // @todo re-introduce initial cell-fix
       cells.push(
         newValue.contentFactory.createCell(this.notebookConfig.defaultCell, {})
       );
