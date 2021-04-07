@@ -227,12 +227,15 @@ export class TextModelFactory implements DocumentRegistry.CodeModelFactory {
    * Create a new model.
    *
    * @param languagePreference - An optional kernel language preference.
+   * @param modelDB - An optional modelDB.
+   * @param isInitialized - An optional flag to check if the model is initialized.
    *
    * @returns A new document model.
    */
   createNew(
     languagePreference?: string,
-    modelDB?: IModelDB
+    modelDB?: IModelDB,
+    isInitialized?: boolean
   ): DocumentRegistry.ICodeModel {
     return new DocumentModel(languagePreference, modelDB);
   }
