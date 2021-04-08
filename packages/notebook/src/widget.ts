@@ -386,16 +386,11 @@ export class StaticNotebook extends Widget {
     }
     this._updateMimetype();
     const cells = newValue.cells;
-
-    // If there are no cells, create an empty cell
-    console.debug('NBWidget _onModelChanged', newValue.isInitialized);
-    // Check if notebook is initialized befor creating an empty cell
     if (!cells.length && newValue.isInitialized) {
       cells.push(
         newValue.contentFactory.createCell(this.notebookConfig.defaultCell, {})
       );
     }
-
     each(cells, (cell: ICellModel, i: number) => {
       this._insertCell(i, cell);
     });
