@@ -10,7 +10,7 @@ import {
   ArrayIterator
 } from '@lumino/algorithm';
 
-import * as nbmodel from '@jupyterlab/nbmodel';
+import * as models from '@jupyterlab/shared-models';
 
 import { ISignal, Signal } from '@lumino/signaling';
 
@@ -36,7 +36,7 @@ export class CellList implements IObservableUndoableList<ICellModel> {
   constructor(
     modelDB: IModelDB,
     factory: NotebookModel.IContentFactory,
-    model: nbmodel.ISharedNotebook
+    model: models.ISharedNotebook
   ) {
     this._factory = factory;
     this._cellOrder = modelDB.createList<string>('cellOrder');
@@ -49,12 +49,12 @@ export class CellList implements IObservableUndoableList<ICellModel> {
   }
 
   type: 'List';
-  nbmodel: nbmodel.ISharedNotebook;
+  nbmodel: models.ISharedNotebook;
 
   /**
    * Prevents that the modeldb event handler is executed when the shared-model event handler is executed and vice-versa.
    */
-  private readonly _mutex = nbmodel.createMutex();
+  private readonly _mutex = models.createMutex();
 
   private onModelDBChanged(
     self: CellList,
@@ -75,7 +75,7 @@ export class CellList implements IObservableUndoableList<ICellModel> {
           change.type === 'move'
         ) {
           const cells = change.newValues.map(cell => {
-            return cell.nbcell.clone() as any;
+            return cell.sharedModel.clone() as any;
           });
           let insertLocation = change.newIndex;
           if (change.type === 'move' && insertLocation > change.oldIndex) {
@@ -98,8 +98,8 @@ export class CellList implements IObservableUndoableList<ICellModel> {
   }
 
   private onSharedModelChanged(
-    self: nbmodel.ISharedNotebook,
-    change: nbmodel.NotebookChange
+    self: models.ISharedNotebook,
+    change: models.NotebookChange
   ) {
     this._mutex(() => {
       let currpos = 0;
@@ -485,14 +485,14 @@ export class CellList implements IObservableUndoableList<ICellModel> {
    * Whether the object can redo changes.
    */
   get canRedo(): boolean {
-    return this.nbmodel.canRedo;
+    return this.nbmodel.canRedo();
   }
 
   /**
    * Whether the object can undo changes.
    */
   get canUndo(): boolean {
-    return this.nbmodel.canUndo;
+    return this.nbmodel.canUndo();
   }
 
   /**
@@ -556,7 +556,7 @@ export class CellList implements IObservableUndoableList<ICellModel> {
               break;
           }
           this._cellMap.set(id, cell);
-        } else if (!existingCell.nbcell.isStandalone) {
+        } else if (!existingCell.sharedModel.isStandalone) {
           this._mutex(() => {
             // it does already exist, probably because it was deleted previously and we introduced it
             // copy it to a fresh codecell instance
