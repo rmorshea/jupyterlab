@@ -267,6 +267,55 @@ export class YNotebook
   }
 
   /**
+   * Returns the metadata associated with the notebook.
+   *
+   * @returns Notebook's metadata.
+   */
+  getMetadata(): nbformat.INotebookMetadata {
+    const meta = this.ymeta.get('metadata');
+    return meta ? deepCopy(meta) : { orig_nbformat: 1 };
+  }
+
+  /**
+   * Sets the metadata associated with the notebook.
+   *
+   * @param metadata: Notebook's metadata.
+   */
+  setMetadata(value: nbformat.INotebookMetadata): void {
+    this.ymeta.set('metadata', deepCopy(value));
+  }
+
+  /**
+   * Updates the metadata associated with the notebook.
+   *
+   * @param value: Metadata's attribute to update.
+   */
+  updateMetadata(value: Partial<nbformat.INotebookMetadata>): void {
+    this.ymeta.set('metadata', Object.assign({}, this.getMetadata(), value));
+  }
+
+  /**
+   * Undo an operation.
+   */
+  undo(): void {
+    this.undoManager.undo();
+  }
+
+  /**
+   * Redo an operation.
+   */
+  redo(): void {
+    this.undoManager.redo();
+  }
+
+  /**
+   * Clear the change stack.
+   */
+  clearUndoHistory(): void {
+    this.undoManager.clear();
+  }
+
+  /**
    * Create a new YNotebook.
    */
   public static create(): models.ISharedNotebook {
@@ -334,35 +383,6 @@ export class YNotebook
     trackedOrigins: new Set([this])
   });
   private _ycellMapping: Map<Y.Map<any>, YCellType> = new Map();
-
-  /**
-   * Returns the metadata associated with the notebook.
-   *
-   * @returns Notebook's metadata.
-   */
-  getMetadata(): nbformat.INotebookMetadata {
-    const meta = this.ymeta.get('metadata');
-    return meta ? deepCopy(meta) : { orig_nbformat: 1 };
-  }
-
-  /**
-   * Sets the metadata associated with the notebook.
-   *
-   * @param metadata: Notebook's metadata.
-   */
-  setMetadata(value: nbformat.INotebookMetadata): void {
-    this.ymeta.set('metadata', deepCopy(value));
-  }
-
-  /**
-   * Updates the metadata associated with the notebook.
-   *
-   * @param value: Metadata's attribute to update.
-   */
-  updateMetadata(value: Partial<nbformat.INotebookMetadata>): void {
-    this.ymeta.set('metadata', Object.assign({}, this.getMetadata(), value));
-  }
-
   public nbformat_minor: number = nbformat.MINOR_VERSION;
   public nbformat: number = nbformat.MAJOR_VERSION;
   public cells: YCellType[];
@@ -547,6 +567,14 @@ export class YBaseCell<Metadata extends models.ISharedBaseCellMetadata>
     if (sourceEvent) {
       changes.sourceChange = sourceEvent.changes.delta as any;
     }
+
+    const outputEvent = events.find(
+      event => event.target === this.ymodel.get('outputs')
+    );
+    if (outputEvent) {
+      changes.outputsChange = outputEvent.changes.delta as any;
+    }
+
     const modelEvent = events.find(event => event.target === this.ymodel) as
       | undefined
       | Y.YMapEvent<any>;
@@ -557,6 +585,15 @@ export class YBaseCell<Metadata extends models.ISharedBaseCellMetadata>
         newValue: this.getMetadata()
       };
     }
+
+    if (modelEvent && modelEvent.keysChanged.has('execution_count')) {
+      const change = modelEvent.changes.keys.get('execution_count');
+      changes.executionCountChange = {
+        oldValue: change!.oldValue,
+        newValue: this.ymodel.get('execution_count')
+      };
+    }
+
     // The model allows us to replace the complete source with a new string. We express this in the Delta format
     // as a replace of the complete string.
     const ysource = this.ymodel.get('source');
@@ -717,15 +754,57 @@ export class YCodeCell
   /**
    * The code cell's prompt number. Will be null if the cell has not been run.
    */
-  get execution_count(): number {
-    return 1;
+  get execution_count(): number | null {
+    return this.ymodel.get('execution_count');
+  }
+
+  /**
+   * The code cell's prompt number. Will be null if the cell has not been run.
+   */
+  set execution_count(count: number | null) {
+    this.transact(() => {
+      this.ymodel.set('execution_count', count);
+    });
   }
 
   /**
    * Execution, display, or stream outputs.
    */
   getOutputs(): Array<nbformat.IOutput> {
-    return this.outputs;
+    return deepCopy(this.ymodel.get('outputs').toArray());
+  }
+
+  /**
+   * Replace all outputs.
+   */
+  setOutputs(outputs: Array<nbformat.IOutput>): void {
+    const youtputs = this.ymodel.get('outputs') as Y.Array<nbformat.IOutput>;
+    this.transact(() => {
+      youtputs.delete(0, youtputs.length);
+      youtputs.insert(0, outputs);
+    });
+  }
+
+  /**
+   * Replace content from `start' to `end` with `outputs`.
+   *
+   * @param start: The start index of the range to replace (inclusive).
+   *
+   * @param end: The end index of the range to replace (exclusive).
+   *
+   * @param outputs: New outputs (optional).
+   */
+  updateOutputs(
+    start: number,
+    end: number,
+    outputs: Array<nbformat.IOutput> = []
+  ): void {
+    const youtputs = this.ymodel.get('outputs') as Y.Array<nbformat.IOutput>;
+    const fin = end < youtputs.length ? end - start : youtputs.length - start;
+    this.transact(() => {
+      youtputs.delete(start, fin);
+      youtputs.insert(start, outputs);
+    });
   }
 
   /**
@@ -734,6 +813,7 @@ export class YCodeCell
   public static create(id?: string): YCodeCell {
     const cell = super.create(id);
     cell.ymodel.set('execution_count', 0); // for some default value
+    cell.ymodel.set('outputs', new Y.Array<nbformat.IOutput>());
     return cell as any;
   }
 
@@ -745,6 +825,7 @@ export class YCodeCell
   public static createStandalone(id?: string): YCodeCell {
     const cell = super.createStandalone(id);
     cell.ymodel.set('execution_count', null); // for some default value
+    cell.ymodel.set('outputs', new Y.Array<nbformat.IOutput>());
     return cell as any;
   }
 
@@ -755,7 +836,10 @@ export class YCodeCell
    */
   public clone(): YCodeCell {
     const cell = super.clone();
+    const youtputs = new Y.Array<nbformat.IOutput>();
+    youtputs.insert(0, this.getOutputs());
     cell.ymodel.set('execution_count', this.execution_count); // for some default value
+    cell.ymodel.set('outputs', youtputs);
     return cell as any;
   }
 
@@ -772,8 +856,6 @@ export class YCodeCell
       execution_count: this.execution_count
     };
   }
-
-  private outputs: Array<nbformat.IOutput> = [];
 }
 
 export class YRawCell
