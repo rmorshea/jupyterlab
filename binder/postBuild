@@ -2,6 +2,7 @@
 set -euo pipefail
 
 pip install -e .
+pip install jupyterlab-link-share
 
 jlpm
 
