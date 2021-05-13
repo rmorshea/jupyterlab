@@ -3,8 +3,6 @@ set -euo pipefail
 
 pip install -e .
 pip install jupyterlab-link-share
-pip install notebook
-python -c "from notebook.auth import passwd; passwd('binder')"
 
 jlpm
 
